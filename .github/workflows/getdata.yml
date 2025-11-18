@@ -23,7 +23,7 @@ jobs:
         run: pip install requests
       
       - name: 執行更新腳本
-        run: python update_data.py
+        run: python getdata.py
       
       - name: Commit & Push 更新後的 JSON
         run: |
