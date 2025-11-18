@@ -1,123 +1,118 @@
 import requests
-import json
 import os
-import urllib.parse
-from datetime import datetime
+import urllib.parse 
 
+# --- 參數設定 ---
+
+# 你的 API Key (保持不變)
 API_KEY = "CWA-63A8D5AE-8C97-4F9C-ADD7-BE84AE2E9276"
 
+# 輸出目錄 (保持不變)
+OUTPUT_DIR = r"D:\marine_moniter"
 
-# ==================== 其餘設定 ====================
+# API 相關設定
+# 注意：CWA 的 O-B0075-001 資料集通常只包含 CWA 自行觀測的站點。
+# 但根據 CWA 開放資料的設計，使用者可以嘗試透過 StationID 參數查詢其他單位協同發布的站點。
 DATA_ID = "O-B0075-001"
 WEATHER_ELEMENTS = "WaveHeight,WaveDirection,WavePeriod"
-OUTPUT_JSON = "marine_data.json"
+LOCAL_FILENAME = "marine_data.json"
 
-# 所有測站資訊（可自行增減）
+# --- 欲查詢的全部測站 ID 列表 (CWA + 新增) ---
+# 字典中的 Key 即為 API 請求所需的 StationID
 ALL_STATION_LOCATIONS = {
-    "46694A": {"name": "龍洞浮標", "unit": "中央氣象署"},
-    "46699A": {"name": "花蓮浮標", "unit": "中央氣象署"},
-    "46708A": {"name": "龜山島浮標", "unit": "中央氣象署"},
-    "46714D": {"name": "小琉球浮標", "unit": "中央氣象署"},
-    "46744A": {"name": "大鵬灣浮標", "unit": "中央氣象署"},
-    "46757B": {"name": "新竹浮標", "unit": "中央氣象署"},
-    "C6AH2":  {"name": "富貴角浮標", "unit": "中央氣象署"},
-    "C6B01":  {"name": "彭佳嶼浮標", "unit": "中央氣象署"},
-    "C6F01":  {"name": "臺中浮標", "unit": "中央氣象署"},
-    "C6S62":  {"name": "臺東外洋浮標", "unit": "中央氣象署"},
-    "C6S94":  {"name": "蘭嶼浮標", "unit": "中央氣象署"},
-    "C6V27":  {"name": "東沙島浮標", "unit": "中央氣象署"},
-    "C6W08":  {"name": "馬祖浮標", "unit": "中央氣象署"},
-    "C6W10":  {"name": "七美浮標", "unit": "中央氣象署"},
-    "46761F": {"name": "成功波浪站", "unit": "中央氣象署"},
-    "C5W09":  {"name": "東吉島波浪站", "unit": "中央氣象署"},
-    "46706A": {"name": "蘇澳浮標", "unit": "經濟部水利署"},
-    "TPBU01": {"name": "臺北港浮標", "unit": "港灣技術研究中心"},
-    "46778A": {"name": "七股浮標", "unit": "經濟部水利署"},
-    "46735A": {"name": "澎湖浮標", "unit": "經濟部水利署"},
-    "46759A": {"name": "鵝鑾鼻浮標", "unit": "經濟部水利署"},
-    "WRA007": {"name": "臺東浮標", "unit": "經濟部水利署"},
-    "COMC08": {"name": "彌陀浮標", "unit": "經濟部水利署"},
-    "46787A": {"name": "金門浮標", "unit": "經濟部水利署"},
+    # 原始 CWA 浮標/波浪站 (16 站)
+    "46694A": { "name": "龍洞浮標 (Longdong Buoy)", "unit": "CWA" },
+    "46699A": { "name": "花蓮浮標 (Hualien Buoy)", "unit": "CWA" },
+    "46708A": { "name": "龜山島浮標 (Guishandao Buoy)", "unit": "CWA" },
+    "46714D": { "name": "小琉球浮標 (Xiao Liuqiu Buoy)", "unit": "CWA" },
+    "46744A": { "name": "大鵬灣浮標 (Dapeng Bay buoy)", "unit": "CWA" }, 
+    "46757B": { "name": "新竹浮標 (Hsinchu Buoy)", "unit": "CWA" },
+    "C6AH2": { "name": "富貴角浮標 (Fugui Cape Buoy)", "unit": "CWA" },
+    "C6B01": { "name": "彭佳嶼浮標 (Pengjiayu Buoy)", "unit": "CWA" },
+    "C6F01": { "name": "臺中浮標 (Taichung Buoy)", "unit": "CWA" },
+    "C6S62": { "name": "臺東外洋浮標 (Taitung Open Ocean Buoy)", "unit": "CWA" }, 
+    "C6S94": { "name": "蘭嶼浮標 (Lanyu Buoy)", "unit": "CWA" },
+    "C6V27": { "name": "東沙島浮標 (Pratas Buoy)", "unit": "CWA" },
+    "C6W08": { "name": "馬祖浮標 (Matsu Buoy)", "unit": "CWA" },
+    "C6W10": { "name": "七美浮標 (Qimei Buoy)", "unit": "CWA" },
+    "46761F": { "name": "成功浮球 (Chenggong Wave Station)", "unit": "CWA" },
+    "C5W09": { "name": "東吉島波浪站 (Dongjidao Wave Station)", "unit": "CWA" },
+
+    # 新增的水利署/港研中心浮標 (8 站)
+    "46706A": { "name": "蘇澳浮標", "unit": "經濟部水利署" },
+    "TPBU01": { "name": "臺北港浮標", "unit": "港灣技術研究中心" },
+    "46778A": { "name": "七股浮標", "unit": "經濟部水利署" },
+    "46735A": { "name": "澎湖浮標", "unit": "經濟部水利署" },
+    "46759A": { "name": "鵝鑾鼻浮標", "unit": "經濟部水利署" },
+    "WRA007": { "name": "臺東浮標", "unit": "經濟部水利署" },
+    "COMC08": { "name": "彌陀浮標", "unit": "經濟部水利署" },
+    "46787A": { "name": "金門浮標", "unit": "經濟部水利署" },
 }
 
-# ==================== 主要函數 ====================
-def fetch_marine_data():
-    station_ids = ",".join(ALL_STATION_LOCATIONS.keys())
-    encoded_ids = urllib.parse.quote(station_ids)
+# --- 核心 API 呼叫函數 ---
 
+def download_marine_data(api_key, output_dir, data_id, elements, station_ids, filename):
+    """
+    呼叫指定的海象觀測資料 API (O-B0075-001) 並儲存為 JSON 檔案，可指定多個測站 ID。
+    
+    :param station_ids: 欲查詢的測站 ID 列表 (逗號分隔字串)。
+    """
+    
+    # 1. 確保輸出目錄存在
+    os.makedirs(output_dir, exist_ok=True)
+    local_path = os.path.join(output_dir, filename)
+
+    # 2. 建構 API 呼叫 URL
+    # 使用 urllib.parse.quote 對 ID 字串進行編碼
+    encoded_station_ids = urllib.parse.quote(station_ids)
+    
+    # 完整的 URL 結構
     url = (
-        f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/{DATA_ID}"
-        f"?Authorization={API_KEY}&format=JSON&StationID={encoded_ids}&WeatherElement={WEATHER_ELEMENTS}"
+        f"https://opendata.cwa.gov.tw/api/v1/rest/datastore/{data_id}"
+        f"?Authorization={api_key}&format=JSON&StationID={encoded_station_ids}&WeatherElement={elements}"
     )
 
-    print(f"正在抓取 {len(ALL_STATION_LOCATIONS)} 個測站資料...")
+    print(f"🌊 正在呼叫 API: {data_id}...")
+    print(f"👉 查詢測站數量: {len(station_ids.split(','))} 個")
+    print(f"💾 將儲存到: {local_path}")
+
     try:
-        response = requests.get(url, timeout=60)
-        response.raise_for_status()
-        print("API 請求成功")
-        return response.json()
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP 錯誤: {e}")
-        if response.status_code == 401:
-            print("警告：401 Unauthorized → API Key 可能錯誤或過期")
-        elif response.status_code == 400:
-            print("提示：400 Bad Request → 部分站點可能不在此資料集")
-        return None
-    except Exception as e:
-        print(f"請求失敗: {e}")
-        return None
-
-
-def parse_and_save(data):
-    result = {
-        "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S (UTC%z)"),
-        "source": "中央氣象署開放資料平台",
-        "total_stations": len(ALL_STATION_LOCATIONS),
-        "stations": {}
-    }
-
-    # 先預設全部無資料
-    for sid, info in ALL_STATION_LOCATIONS.items():
-        result["stations"][sid] = {
-            "name": info["name"],
-            "unit": info["unit"],
-            "wave_height": "-",
-            "wave_direction": "-",
-            "wave_period": "-",
-            "obs_time": "-",
-            "status": "無資料"
-        }
-
-    # 填入實際資料
-    if data and data.get("success") == "true":
-        records = data.get("result", {}).get("records", [])
-        print(f"成功取得 {len(records)} 筆即時資料")
+        # 3. 發送請求
+        response = requests.get(url, timeout=45) # 稍微增加超時時間以應對較多站點的查詢
+        response.raise_for_status() # 檢查 HTTP 狀態碼
         
-        for rec in records:
-            sid = rec.get("StationID")
-            if sid in ALL_STATION_LOCATIONS:
-                obs_time = rec.get("ObsTime")
-                if isinstance(obs_time, dict):
-                    obs_time = obs_time.get("DateTime", "-")
-                result["stations"][sid].update({
-                    "wave_height": rec.get("WaveHeight", "-"),
-                    "wave_direction": rec.get("WaveDirection", "-"),
-                    "wave_period": rec.get("WavePeriod", "-"),
-                    "obs_time": obs_time or "-",
-                    "status": "正常"
-                })
-
-    # 寫入 JSON
-    with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-
-    print(f"marine_data.json 已更新！共 {sum(1 for s in result['stations'].values() if s['status'] == '正常')} 站有資料")
+        # 4. 將回傳的 JSON 文字內容寫入檔案
+        with open(local_path, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+            
+        print(f"✅ 成功儲存所有指定測站的海象觀測資料到: {local_path}")
+        
+    except requests.exceptions.RequestException as e:
+        print(f"❌ 呼叫 API 失敗 {filename}。錯誤: {e}")
+        if response.status_code == 400:
+             print("   (提示: 400 Bad Request 可能表示某些非 CWA 站點的資料在該資料集中不可用，請檢查回傳的 JSON 內容確認包含哪些站點)")
+    except Exception as e:
+        print(f"❌ 儲存檔案時發生錯誤 {filename}。錯誤: {e}")
 
 
-# ==================== 主程式 ====================
+# --- 主執行區塊 ---
+def main():
+    # 提取 ALL_STATION_LOCATIONS 字典中的所有 key (即測站 ID)，並用逗號連接成字串
+    station_ids_string = ",".join(ALL_STATION_LOCATIONS.keys())
+    
+    print(f"輸出目錄已設定為: {OUTPUT_DIR}")
+    
+    # 執行下載海象觀測資料
+    download_marine_data(
+        API_KEY, 
+        OUTPUT_DIR, 
+        DATA_ID, 
+        WEATHER_ELEMENTS, 
+        station_ids_string,  # 傳入包含所有 24 個站點的 ID 字串
+        LOCAL_FILENAME
+    )
+    
+    print("\n--- 所有指定測站檔案下載完成 ---")
+
 if __name__ == "__main__":
-    raw_data = fetch_marine_data()
-    if raw_data:
-        parse_and_save(raw_data)
-    else:
-        print("因 API 請求失敗，無法更新資料")
+    main()
