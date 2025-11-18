@@ -5,10 +5,12 @@ import urllib.parse
 from datetime import datetime
 
 # ==================== 從環境變數讀取 API Key（關鍵！）================
-API_KEY = os.getenv("CWA_API_KEY")
+#API_KEY = os.getenv("CWA_API_KEY")
+#if not API_KEY:
+#    raise EnvironmentError("錯誤：找不到環境變數 CWA_API_KEY！請在 GitHub Secrets 設定。")
 
-if not API_KEY:
-    raise EnvironmentError("錯誤：找不到環境變數 CWA_API_KEY！請在 GitHub Secrets 設定。")
+API_KEY = "CWA-63A8D5AE-8C97-4F9C-ADD7-BE84AE2E9276"
+
 
 # ==================== 其餘設定 ====================
 DATA_ID = "O-B0075-001"
