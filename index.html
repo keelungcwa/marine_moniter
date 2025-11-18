@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臺灣即時海象監測</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body {
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; height: 100vh; background-color: #f0f8ff; color: #333;
+        }
+        h2 { color: #00477E; border-bottom: 2px solid #e0f0ff; padding-bottom: 5px; margin-top: 0; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+        .title-buttons button {
+            background: #00477E; color: white; border: none; padding: 5px 10px; margin-left: 6px;
+            border-radius: 5px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
+        }
+        .title-buttons button:hover { background: #003360; }
+        .title-buttons button.active { background: #003360; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+        
+        #map-container {
+            width: 33.33%; height: 100%; padding: 20px; box-sizing: border-box;
+            background-color: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); position: sticky; top: 0;
+        }
+        #mapid { height: calc(100% - 170px); width: 100%; border-radius: 8px; border: 1px solid #ddd; }
+
+        #chart-container {
+            width: 66.67%; height: 100%; padding: 20px; box-sizing: border-box; overflow-y: auto;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            grid-auto-rows: minmax(300px, auto); gap: 15px;
+        }
+        .chart-item {
+            border: 1px solid #cceeff; padding: 15px; border-radius: 8px;
+            background-color: white; box-shadow: 0 4px 10px rgba(0,71,126,0.05);
+            transition: transform 0.2s; position: relative;
+        }
+        .chart-item:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,71,126,0.1); }
+        .chart-item h3 { color: #007bff; margin: 0 0 8px 0; font-size: 1.1em; padding-right: 120px; }
+        .unit { 
+            position: absolute; top: 12px; right: 15px; font-size: 0.85em; color: #666; 
+            background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 4px;
+        }
+
+        /* 等級色標 */
+        .chart-border-huge    { border-left: 6px solid #9c27b0 !important; }
+        .chart-border-long    { border-left: 6px solid #ff0000 !important; }
+        .chart-border-large   { border-left: 6px solid #FFA500 !important; }
+        .chart-border-medium  { border-left: 6px solid #ffdb4d !important; }
+        .chart-border-small   { border-left: 6px solid #4da6ff !important; }
+        .chart-border-none    { border-left: 6px solid #cccccc !important; }
+
+        .wave-marker {
+            width: 44px !important; height: 44px !important; line-height: 44px !important;
+            text-align: center; border-radius: 50%; border: 3px solid #fff !important;
+            cursor: pointer; font-size: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            opacity: 0.5; transition: all 0.3s;
+        }
+        .wave-marker:hover { opacity: 1; transform: scale(1.15); }
+
+        .wave-circle-huge   { background-color: #9c27b0; }
+        .wave-circle-long   { background-color: #ff0000; }
+        .wave-circle-large  { background-color: #FFA500; }
+        .wave-circle-medium { background-color: #ffdb4d; }
+        .wave-circle-small  { background-color: #4da6ff; }
+        .wave-circle-none   { background-color: #cccccc; }
+
+        /* 新增：左下角署名 */
+        .credit {
+            position: absolute; bottom: 8px; left: 20px; font-size: 0.75em; color: #666; opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map-container">
+    <h2>
+        臺灣即時海象監測
+        <div class="title-buttons">
+            <button data-hours="24" class="active">24小時</button>
+            <button data-hours="48">48小時</button>
+        </div>
+    </h2>
+    <div id="mapid"></div>
+    
+    <!-- 浪高等級說明（排版已優化） -->
+    <div style="margin-top:10px;padding:10px;background:#fff;border-radius:5px;border:1px solid #ccc;font-size:0.9em;line-height:1.8;position:relative;">
+        <strong>浪高等級 (過去8小時內資料):</strong>   中央氣象署基隆氣象站 製作<br>          
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#9c27b0;margin-right:5px;"></span>巨浪 ≥6m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ff0000;margin-right:5px;"></span>長浪 >1.5m 且週期≥8秒 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#FFA500;margin-right:5px;"></span>大浪 3–6m<br>
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ffdb4d;margin-right:5px;"></span>中浪 1.5–3m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#4da6ff;margin-right:5px;"></span>小浪 ≤1.5m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#cccccc;margin-right:5px;"></span>無資料
+        
+    </div>
+</div>
+
+<div id="chart-container">
+    <div id="loading" style="grid-column:1/-1;text-align:center;padding:60px;color:#666;">
+        資料載入中，請稍候...
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<script>
+    const stationLocations = {
+        "46694A": { lat: 25.098600, lon: 121.922500, name: "龍洞浮標", unit: "中央氣象署" },
+        "46699A": { lat: 24.031900, lon: 121.631900, name: "花蓮浮標", unit: "中央氣象署" },
+        "46708A": { lat: 24.846900, lon: 121.926700, name: "龜山島浮標", unit: "中央氣象署" },
+        "46714D": { lat: 22.317200, lon: 120.378100, name: "小琉球浮標", unit: "中央氣象署" },
+        "46744A": { lat: 22.417222, lon: 120.438888, name: "大鵬灣浮標", unit: "中央氣象署" },
+        "46757B": { lat: 24.763330, lon: 120.844720, name: "新竹浮標", unit: "中央氣象署" },
+        "C6AH2": { lat: 25.303600, lon: 121.531100, name: "富貴角浮標", unit: "中央氣象署" },
+        "C6B01": { lat: 25.620550, lon: 122.067220, name: "彭佳嶼浮標", unit: "中央氣象署" },
+        "C6F01": { lat: 24.237500, lon: 120.414440, name: "臺中浮標", unit: "中央氣象署" },
+        "C6S62": { lat: 21.661700, lon: 124.091700, name: "臺東外洋浮標", unit: "中央氣象署" },
+        "C6S94": { lat: 22.070600, lon: 121.580300, name: "蘭嶼浮標", unit: "中央氣象署" },
+        "C6V27": { lat: 21.086660, lon: 118.835000, name: "東沙島浮標", unit: "中央氣象署" },
+        "C6W08": { lat: 26.355270, lon: 120.513610, name: "馬祖浮標", unit: "中央氣象署" },
+        "C6W10": { lat: 23.191100, lon: 119.653800, name: "七美浮標", unit: "中央氣象署" },
+        "46761F": { lat: 23.132480, lon: 121.420050, name: "成功浮球", unit: "中央氣象署" },
+        "C5W09": { lat: 23.256500, lon: 119.683900, name: "東吉島波浪站", unit: "中央氣象署" },
+        "46706A": { lat: 24.5300,   lon: 121.8900,   name: "蘇澳浮標", unit: "經濟部水利署" },
+        "TPBU01": { lat: 25.1658,   lon: 121.3500,   name: "臺北港浮標", unit: "港灣技術研究中心" },
+        "46778A": { lat: 23.1336,   lon: 120.0403,   name: "七股浮標", unit: "經濟部水利署" },
+        "46735A": { lat: 23.78,     lon: 119.55,       name: "澎湖浮標", unit: "經濟部水利署" },
+        "46759A": { lat: 21.9164,   lon: 120.8108,   name: "鵝鑾鼻浮標", unit: "經濟部水利署" },
+        "WRA007": { lat: 22.7561,   lon: 121.1714,   name: "臺東浮標", unit: "經濟部水利署" },
+        "COMC08": { lat: 22.8000,   lon: 120.2500,   name: "彌陀浮標", unit: "經濟部水利署" },
+        "46787A": { lat: 24.4756,   lon: 118.4239,   name: "金門浮標", unit: "經濟部水利署" },
+    };
+
+    const map = L.map('mapid', {
+        minZoom: 6.5,
+        maxBounds: [[18, 114], [29, 128]],
+        maxBoundsViscosity: 0.8
+    }).setView([23.7, 121], 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const markersLayer = L.layerGroup().addTo(map);
+    let currentHours = 24;
+
+    function getWaveLevel(max8h, hasLongWave) {
+        if (max8h === null) return { className: 'wave-circle-none', border: 'chart-border-none', desc: '無資料', order: 0 };
+        if (max8h >= 6.0)   return { className: 'wave-circle-huge',  border: 'chart-border-huge',  desc: `巨浪 ${max8h.toFixed(1)}m`, order: 5 };
+        if (hasLongWave)    return { className: 'wave-circle-long',  border: 'chart-border-long',  desc: `長浪 ${max8h.toFixed(1)}m`, order: 4 };
+        if (max8h >= 3.0)   return { className: 'wave-circle-large', border: 'chart-border-large', desc: `大浪 ${max8h.toFixed(1)}m`, order: 3 };
+        if (max8h >= 1.5)   return { className: 'wave-circle-medium',border: 'chart-border-medium',desc: `中浪 ${max8h.toFixed(1)}m`, order: 2 };
+        return                      { className: 'wave-circle-small', border: 'chart-border-small', desc: `小浪 ${max8h.toFixed(1)}m`, order: 1 };
+    }
+
+    async function fetchAndRenderData() {
+        const chartContainer = document.getElementById('chart-container');
+        markersLayer.clearLayers();
+
+        try {
+            const resp = await fetch('http://localhost:3000/api/data');
+            if (!resp.ok) throw new Error('API 連線失敗');
+            const data = await resp.json();
+            if (!data.Records?.SeaSurfaceObs?.Location) throw new Error('資料格式錯誤');
+
+            const locations = data.Records.SeaSurfaceObs.Location;
+            const eightHoursAgo = new Date(Date.now() - 8*60*60*1000);
+            const hoursAgo = new Date(Date.now() - currentHours*60*60*1000);
+            const stationInfo = [];
+
+            locations.forEach(loc => {
+                const id = loc.Station.StationID;
+                if (!stationLocations[id]) return;
+
+                let max8h = null;
+                let hasLongWave8h = false;
+                const points = [];
+
+                loc.StationObsTimes.StationObsTime.forEach(obs => {
+                    const w = obs.WeatherElements;
+                    if (!w) return;
+                    const wave = w.WaveHeight, period = w.WavePeriod, time = obs.DateTime;
+                    if (!wave || wave === "None" || !period || period === "None" || !time) return;
+
+                    const h = parseFloat(wave), p = parseFloat(period);
+                    const t = new Date(time);
+                    if (isNaN(h) || isNaN(p)) return;
+
+                    if (t >= hoursAgo) {
+                        points.push({ time: t, waveHeight: h, wavePeriod: p });
+                    }
+
+                    if (t >= eightHoursAgo) {
+                        if (max8h === null || h > max8h) max8h = h;
+                        if (h > 1.5 && p >= 8) hasLongWave8h = true;
+                    }
+                });
+
+                if (points.length === 0) return;
+
+                points.sort((a,b) => a.time - b.time);
+
+                const level = getWaveLevel(max8h, hasLongWave8h);
+
+                stationInfo.push({ 
+                    id, 
+                    name: stationLocations[id].name, 
+                    unit: stationLocations[id].unit,
+                    points, 
+                    max8h,
+                    level,
+                    sortValue: level.order * 100 + (max8h || 0)  // 用來排序的綜合分數
+                });
+
+                const iconSize = max8h >= 6 ? [56,56] : [44,44];
+                const iconAnchor = max8h >= 6 ? [28,28] : [22,22];
+
+                const icon = L.divIcon({
+                    className: `wave-marker ${level.className}`,
+                    html: '🌊',
+                    iconSize, 
+                    iconAnchor
+                });
+
+                L.marker([stationLocations[id].lat, stationLocations[id].lon], { icon })
+                    .addTo(markersLayer)
+                    .bindPopup(`<b>${stationLocations[id].name} (${id})</b><br>
+                                ${stationLocations[id].unit}<br>
+                                過去8小時最大浪高：<strong>${level.desc}</strong>`);
+            });
+
+            // 全新排序：先嚴重等級 → 同等級再比浪高數字（由大到小）
+            stationInfo.sort((a, b) => b.sortValue - a.sortValue);
+
+            chartContainer.innerHTML = '';
+
+            stationInfo.forEach(st => {
+                const div = document.createElement('div');
+                div.className = `chart-item ${st.level.border}`;
+
+                div.innerHTML = `<h3>${st.name} (${st.id}) – ${st.level.desc}</h3>
+                                 <div class="unit">${st.unit}</div>
+                                 <canvas id="chart-${st.id}"></canvas>`;
+                chartContainer.appendChild(div);
+
+                const ctx = document.getElementById(`chart-${st.id}`).getContext('2d');
+                const allWaves = st.points.map(p => p.waveHeight);
+                const maxWave = Math.max(...allWaves);
+                const suggestedMax = maxWave > 3 ? Math.ceil(maxWave * 1.2) : 3.2;
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: st.points.map(p => p.time),
+                        datasets: [
+                            { label: '浪高 (m)', data: allWaves, yAxisID: 'y', borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.3, pointRadius: 3 },
+                            { label: '週期 (s)', data: st.points.map(p => p.wavePeriod), yAxisID: 'y1', 
+                              borderColor: '#212529', backgroundColor: 'rgba(33,37,41,0.1)', tension: 0.3, pointRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'MM/dd HH:mm' } }, title: { display: true, text: '時間' } },
+                            y: { position: 'left', min: 0, max: suggestedMax, title: { display: true, text: '浪高 (m)', color: '#007bff' }, ticks: { color: '#007bff' } },
+                            y1: { position: 'right', title: { display: true, text: '週期 (s)', color: '#212529' }, grid: { drawOnChartArea: false }, ticks: { color: '#212529' } }
+                        },
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}${ctx.datasetIndex===0?'m':'s'}` } }
+                        }
+                    }
+                });
+            });
+
+            if (stationInfo.length === 0) {
+                chartContainer.innerHTML = '<p style="grid-column:1/-1;color:#c33;text-align:center;font-weight:bold;">目前無有效浪高與週期資料</p>';
+            }
+
+        } catch (err) {
+            console.error(err);
+            chartContainer.innerHTML = '<h2>資料載入失敗</h2><p style="color:red;">請確認伺服器是否運行。</p>';
+        } finally {
+            document.getElementById('loading')?.remove();
+        }
+    }
+
+    document.querySelectorAll('.title-buttons button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.title-buttons button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentHours = parseInt(this.dataset.hours);
+            fetchAndRenderData();
+        });
+    });
+
+    fetchAndRenderData();
+    setInterval(fetchAndRenderData, 10 * 60 * 1000);
+</script>
+</body>
+</html>
