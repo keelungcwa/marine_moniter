@@ -160,8 +160,8 @@
         markersLayer.clearLayers();
 
         try {
-            const resp = await fetch('http://localhost:3000/api/data');
-            if (!resp.ok) throw new Error('API 連線失敗');
+            const resp = await fetch('./marine_data.json');
+            if (!resp.ok) throw new Error('json讀取失敗');
             const data = await resp.json();
             if (!data.Records?.SeaSurfaceObs?.Location) throw new Error('資料格式錯誤');
 
