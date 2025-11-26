@@ -6,7 +6,7 @@ import urllib.parse
 
 # API Key 從環境變數讀取（安全）
 #API_KEY = os.getenv("CWA_API_KEY")
-API_KEY = "CWA-63A8D5AE-8C97-4F9C-ADD7-BE84AE2E9276"
+API_KEY = "CWA-35C0E283-99B1-40F6-9749-3C8B23739D31"
 
 # 輸出到專案根目錄的 marine_data.json
 #OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "marine_data.json")
