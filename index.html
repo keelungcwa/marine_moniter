@@ -266,7 +266,7 @@
                         scales: {
                             x: { type: 'time', time: { unit: 'hour', displayFormats: { hour: 'MM/dd HH:mm' } }, title: { display: true, text: '時間' } },
                             y: { position: 'left', min: 0, max: suggestedMax, title: { display: true, text: '浪高 (m)', color: '#007bff' }, ticks: { color: '#007bff' } },
-                            y1: { position: 'right', min: 0, title: { display: true, text: '週期 (s)', color: '#212529' }, grid: { drawOnChartArea: false }, ticks: { color: '#212529' } }
+                            y1: { position:'right', min:0, suggestedMax:8, title:{display:true,text:'週期 (s)',color:'#212529'}, grid:{drawOnChartArea:false}, ticks:{color:'#212529', stepSize:2, callback:v=>v+'s'} }
                         },
                         plugins: {
                             legend: { position: 'top' },
