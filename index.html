@@ -6,14 +6,11 @@
     <title>臺灣即時海象監測</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        /* --- 基礎設定 (電腦版預設) --- */
         body {
             margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex; height: 100vh; background-color: #f0f8ff; color: #333;
-            overflow: hidden; /* 電腦版固定視窗，內部捲動 */
         }
         h2 { color: #00477E; border-bottom: 2px solid #e0f0ff; padding-bottom: 5px; margin-top: 0; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
-        
         .title-buttons button {
             background: #00477E; color: white; border: none; padding: 5px 10px; margin-left: 6px;
             border-radius: 5px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
@@ -21,21 +18,17 @@
         .title-buttons button:hover { background: #003360; }
         .title-buttons button.active { background: #003360; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
         
-        /* 地圖區塊 */
         #map-container {
             width: 33.33%; height: 100%; padding: 20px; box-sizing: border-box;
-            background-color: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10;
+            background-color: #ffffff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); position: sticky; top: 0;
         }
         #mapid { height: calc(100% - 170px); width: 100%; border-radius: 8px; border: 1px solid #ddd; }
 
-        /* 圖表區塊 */
         #chart-container {
             width: 66.67%; height: 100%; padding: 20px; box-sizing: border-box; overflow-y: auto;
             display: grid; grid-template-columns: repeat(2, 1fr);
             grid-auto-rows: minmax(300px, auto); gap: 15px;
         }
-
-        /* 圖表卡片樣式 */
         .chart-item {
             border: 1px solid #cceeff; padding: 15px; border-radius: 8px;
             background-color: white; box-shadow: 0 4px 10px rgba(0,71,126,0.05);
@@ -48,13 +41,7 @@
             background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 4px;
         }
 
-        /* 圖例區塊樣式 (抽出 class 方便 RWD 控制) */
-        .legend-box {
-            margin-top: 10px; padding: 10px; background: #fff; border-radius: 5px;
-            border: 1px solid #ccc; font-size: 0.9em; line-height: 1.8; position: relative;
-        }
-
-        /* 等級色標 CSS (保持不變) */
+        /* 等級色標 */
         .chart-border-huge    { border-left: 6px solid #9c27b0 !important; }
         .chart-border-long    { border-left: 6px solid #ff0000 !important; }
         .chart-border-large   { border-left: 6px solid #FFA500 !important; }
@@ -77,44 +64,9 @@
         .wave-circle-small  { background-color: #4da6ff; }
         .wave-circle-none   { background-color: #cccccc; }
 
-        .credit { position: absolute; bottom: 8px; left: 20px; font-size: 0.75em; color: #666; opacity: 0.8; }
-
-        /* --- RWD 手機版設定 (寬度小於 768px 時生效) --- */
-        @media screen and (max-width: 768px) {
-            body {
-                flex-direction: column; /* 改為垂直排列 */
-                height: auto; /* 高度自動，讓網頁可以捲動 */
-                overflow-y: auto; /* 恢復 Body 捲動 */
-            }
-
-            #map-container {
-                width: 100%;
-                height: 50vh; /* 地圖佔據螢幕一半高度 */
-                position: relative; /* 取消 sticky */
-                padding: 10px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-
-            #mapid {
-                height: calc(100% - 150px); /* 調整地圖高度以適應手機版標題高度 */
-            }
-
-            .legend-box {
-                font-size: 0.8em; /* 手機版圖例字體縮小 */
-                line-height: 1.6;
-                padding: 8px;
-            }
-
-            #chart-container {
-                width: 100%;
-                height: auto;
-                overflow-y: visible; /* 取消容器內部捲動，改用 Body 捲動 */
-                grid-template-columns: 1fr; /* 改為單欄顯示 */
-                padding: 10px;
-                padding-bottom: 40px; /* 底部留白 */
-            }
-
-            h2 { font-size: 1.2em; }
+        /* 新增：左下角署名 */
+        .credit {
+            position: absolute; bottom: 8px; left: 20px; font-size: 0.75em; color: #666; opacity: 0.8;
         }
     </style>
 </head>
@@ -130,15 +82,15 @@
     </h2>
     <div id="mapid"></div>
     
-    <div class="legend-box">
-        <strong>浪高等級 (過去8小時內資料):</strong>   中央氣象署基隆氣象站 製作<br>
-          
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#9c27b0;margin-right:5px;vertical-align:middle;"></span>巨浪 ≥6m 
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ff0000;margin-right:5px;vertical-align:middle;"></span>長浪 >1.5m 且週期≥8秒<br>
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#FFA500;margin-right:5px;vertical-align:middle;"></span>大浪 3–6m 
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ffdb4d;margin-right:5px;vertical-align:middle;"></span>中浪 1.5–3m<br>
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#4da6ff;margin-right:5px;vertical-align:middle;"></span>小浪 ≤1.5m 
-        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#cccccc;margin-right:5px;vertical-align:middle;"></span>無資料
+    <!-- 浪高等級說明（排版已優化） -->
+    <div style="margin-top:10px;padding:10px;background:#fff;border-radius:5px;border:1px solid #ccc;font-size:0.9em;line-height:1.8;position:relative;">
+        <strong>浪高等級 (過去8小時內資料):</strong>   中央氣象署基隆氣象站 製作<br>          
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#9c27b0;margin-right:5px;"></span>巨浪 ≥6m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ff0000;margin-right:5px;"></span>長浪 >1.5m 且週期≥8秒 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#FFA500;margin-right:5px;"></span>大浪 3–6m<br>
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ffdb4d;margin-right:5px;"></span>中浪 1.5–3m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#4da6ff;margin-right:5px;"></span>小浪 ≤1.5m 
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#cccccc;margin-right:5px;"></span>無資料
         
     </div>
 </div>
@@ -174,7 +126,7 @@
         "46706A": { lat: 24.5300,   lon: 121.8900,   name: "蘇澳浮標", unit: "經濟部水利署" },
         "TPBU01": { lat: 25.1658,   lon: 121.3500,   name: "臺北港浮標", unit: "港灣技術研究中心" },
         "46778A": { lat: 23.1336,   lon: 120.0403,   name: "七股浮標", unit: "經濟部水利署" },
-        "46735A": { lat: 23.78,     lon: 119.55,        name: "澎湖浮標", unit: "經濟部水利署" },
+        "46735A": { lat: 23.78,     lon: 119.55,       name: "澎湖浮標", unit: "經濟部水利署" },
         "46759A": { lat: 21.9164,   lon: 120.8108,   name: "鵝鑾鼻浮標", unit: "經濟部水利署" },
         "WRA007": { lat: 22.7561,   lon: 121.1714,   name: "臺東浮標", unit: "經濟部水利署" },
         "COMC08": { lat: 22.8000,   lon: 120.2500,   name: "彌陀浮標", unit: "經濟部水利署" },
@@ -290,9 +242,7 @@
 
                 div.innerHTML = `<h3>${st.name} (${st.id}) – ${st.level.desc}</h3>
                                  <div class="unit">${st.unit}</div>
-                                 <div style="height: 300px; width: 100%;">
-                                    <canvas id="chart-${st.id}"></canvas>
-                                 </div>`;
+                                 <canvas id="chart-${st.id}"></canvas>`;
                 chartContainer.appendChild(div);
 
                 const ctx = document.getElementById(`chart-${st.id}`).getContext('2d');
