@@ -612,7 +612,7 @@ const MODE_CONFIG = {
             { color:'#29b6f6', label:'靜風 <1.6m/s' },
             { color:'#455a64', label:'無資料' },
         ],
-        legendTitle: '平均風速 (過去8小時)',
+        legendTitle: '平均風速',
         hasArrow: true,
         arrowKey: 'windDir',   // 來向 → 反轉 +180
         reverseArrow: true,
@@ -1081,7 +1081,7 @@ async function fetchAndRenderData() {
             const popupLines = [
                 `<b>${STATIONS[id].name} (${id})</b>`,
                 STATIONS[id].unit,
-                `過去8小時：<strong>${bestLevel.desc}</strong>`,
+                `<strong>${bestLevel.desc}</strong>`,
             ];
             if (!hasData) popupLines.push('<i style="color:#aaa">（此觀測無資料）</i>');
 
