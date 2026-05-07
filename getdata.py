@@ -13,7 +13,7 @@ API_KEY = "CWA-35C0E283-99B1-40F6-9749-3C8B23739D31"
 OUTPUT_PATH = "marine_data.json"
 
 DATA_ID = "O-B0075-001"
-WEATHER_ELEMENTS = "WaveHeight,WaveDirection,WavePeriod"
+WEATHER_ELEMENTS = "WaveHeight,WaveDirection,WavePeriod,SeaTemperature,PrimaryAnemometer,Temperature,StationPressure,SeaCurrents"
 
 ALL_STATION_LOCATIONS = {
     "46694A": { "name": "龍洞浮標", "unit": "CWA" },
